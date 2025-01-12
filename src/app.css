@@ -1,0 +1,385 @@
+:root {
+  /* Webflow */
+  --background1: #404040;
+  --background2: #4d4d4d;
+  --background3: #363636;
+  --background4: #2b2b2b;
+  --background5: #212121;
+  --backgroundInactive: #4d4d4d;
+  --backgroundInverse: #ebebeb;
+
+  --secondaryButtonBackground: #5e5e5e;
+  --secondaryButtonBackgroundHover: #696969;
+
+  --actionSecondaryBackground: #5e5e5e;
+  --actionSecondaryBackgroundHover: #696969;
+  --actionPrimaryText: #ffffff;
+  --actionPrimaryTextHover: #f6f6f6;
+  --actionSecondaryText: #ebebeb;
+  --actionSecondaryTextHover: #f6f6f6;
+  --actionPrimaryBackground: #0073e6;
+  --actionPrimaryBackgroundHover: #1280ee;
+
+  --border1: #363636;
+  --border2: #2b2b2b;
+  --border3: #212121;
+  --border4: #5e5e5e;
+
+  --text1: #d9d9d9;
+  --text2: #ababab;
+  --text3: #757575;
+  --text4: #696969;
+  --textInactive: #757575;
+  --textInverse: #363636;
+
+  --blueText: #8ac2ff;
+  --blueIcon: #2496ff;
+  --blueBorder: #2496ff;
+
+  --greenBackground: #008547;
+  --greenBackgroundHover: #00944f;
+  --greenText: #63d489;
+  --greenIcon: #2fc862;
+  --greenBorder: #2fc862;
+
+  --yellowBackground: #996e00;
+  --yellowBackgroundHover: #ad7d00;
+  --yellowText: #ffc700;
+  --yellowIcon: #ffc700;
+  --yellowBorder: #ffc700;
+  --redBackground: #cf313b;
+  --redBackgroundHover: #db434c;
+  --redText: #ff8a8a;
+  --redIcon: #ff424d;
+  --redBorder: #ff424d;
+
+  --orangeBackground: #c75300;
+  --orangeBackgroundHover: #dd7124;
+  --orangeText: #ffab66;
+  --orangeIcon: #f67e28;
+  --orangeBorder: #f67e28;
+  --purpleBackground: #7f5ae9;
+  --purpleBackgroundHover: #8a61ff;
+  --purpleText: #b89eff;
+  --purpleIcon: #a484ff;
+  --purpleBorder: #a484ff;
+
+  /* TYPOGRAPHY */
+  --font-stack: Inter, -apple-system, "system-ui", "Segoe UI", Roboto,
+    Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+
+  --font-size-small: 11px;
+  --font-size-large: 12px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+
+  --border-radius: 4px;
+
+  /* Web Bae */
+  --top-bar-height: 32px;
+  --bottom-bar-height: 40px;
+  --padding-regular: 8px;
+  --baeYellow: #e6ff02;
+  --buttonHeight: 24px;
+
+  /* Generics */
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-size: var(--font-size-small);
+  font-weight: 400;
+  line-height: 1.5;
+
+  color: var(--text1);
+  background-color: var(--background1);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+input,
+textarea {
+  color: var(--text1);
+  background-color: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border2);
+  /* Ensures uniform border */
+  border-radius: var(--border-radius);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  outline: none;
+  padding: 2px 4px;
+}
+
+/* Color Pickers */
+
+input[type="color"]::-moz-color-swatch {
+  border: none;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+}
+
+/* Range Inputs */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  /* Override default appearance */
+  appearance: none;
+  width: 90%;
+  /* Specific width if needed */
+  background: transparent;
+  /* Make default track invisible */
+  border: none;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 8px;
+  cursor: pointer;
+  border-radius: 1.3px;
+  border: 2px solid rgba(255, 255, 255, 0.13);
+}
+
+/* Styles for the thumb */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 4px;
+  /* Match .slider-thumb width */
+  height: 12px;
+  /* Match .slider-thumb height */
+  background: var(--text1);
+  /* Match .slider-thumb background */
+  cursor: pointer;
+  border-radius: 1px;
+  /* Match .slider-thumb border-radius */
+  transform: translateY(-50%);
+  box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 1px,
+    rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px;
+  /* Match .slider-thumb box-shadow */
+}
+
+/* Styles for the track */
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 2px;
+  background: var(--border1);
+  /* Match .slider-track background */
+  border-radius: 4px;
+  /* Match .slider-track border-radius */
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--blueBorder);
+}
+
+textarea {
+  resize: none;
+  height: calc(var(--font-size-small) * 3);
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+#app {
+  width: 100%;
+  margin: 0 auto;
+  text-align: left;
+}
+
+/* Style for select elements */
+select {
+  color: var(--text1);
+  font-size: var(--font-size-small);
+  height: var(--buttonHeight);
+  max-width: 120px;
+  padding: 4px;
+  border-radius: var(--border-radius, 4px);
+  border: none;
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.1) 100%),
+    rgba(255, 255, 255, 0.08);
+
+  /* boxShadows-action-secondary */
+  box-shadow: 0px 0.5px 0.5px 0px rgba(255, 255, 255, 0.12) inset,
+    0px 0.5px 1px 0px #000;
+  cursor: pointer;
+}
+
+select:hover {
+  background-color: var(--actionSecondaryBackgroundHover);
+}
+
+/* Style for select elements when focused */
+select:focus {
+  outline: none;
+}
+
+.empty-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  appearance: none;
+  padding: 0;
+}
+
+.empty-button:hover {
+  background: var(--actionSecondaryBackground);
+}
+
+button {
+  min-height: var(--buttonHeight);
+  border-radius: var(--border-radius);
+  padding: 4px 12px;
+  background-color: var(--actionPrimaryBackground);
+  color: var(--actionPrimaryText);
+  border: 0;
+  cursor: pointer;
+  transition: border-color 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+button:hover {
+  background-color: var(--actionPrimaryBackgroundHover);
+}
+
+button:focus,
+button:focus-visible {
+  outline: none;
+}
+
+button.secondary {
+  color: var(--actionSecondaryText);
+  padding: 2px 8px;
+  font-size: var(--font-size-large);
+  font-weight: 400;
+  transition: background-color 0.2s ease-in-out;
+  border-radius: var(--border-radius, 4px);
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.1) 100%),
+    rgba(255, 255, 255, 0.08);
+
+  /* boxShadows-action-secondary */
+  box-shadow: 0px 0.5px 0.5px 0px rgba(255, 255, 255, 0.12) inset,
+    0px 0.5px 1px 0px #000;
+}
+
+button.secondary:hover {
+  background-color: var(--actionSecondaryBackgroundHover);
+}
+
+button.disabled {
+  background-color: var(--backgroundInactive);
+  color: var(--textInactive);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0.25rem 0.5rem;
+}
+
+.muted {
+  color: var(--text3);
+  text-transform: uppercase;
+  font-size: 0.6em;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+/* LOADERS */
+/* HTML: <div class="loader"></div> */
+.loader {
+  width: 32px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 4px solid var(--background5);
+  border-right-color: var(--white);
+  animation: l2 1s infinite linear;
+  margin-bottom: 16px;
+}
+
+.loader-small {
+  width: 12px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid var(--background5);
+  border-right-color: var(--white);
+  animation: l2 1s infinite linear;
+  /* margin-bottom: 4px; */
+}
+
+.loader.absolute {
+  position: absolute;
+  top: 2.5rem;
+  left: 2.5rem;
+}
+
+@keyframes l2 {
+  to {
+    transform: rotate(1turn);
+  }
+}

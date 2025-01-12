@@ -1,0 +1,6 @@
+{
+    "name": "clean-styles",
+    "apiVersion": "2",
+    "size": "comfortable",
+    "publicDir": "dist"
+}
