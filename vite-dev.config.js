@@ -11,5 +11,5 @@ export default defineConfig({
     },
   },
   plugins: [svelte(), wfReload()],
-  base: '/',
+  base: './',
 });
