@@ -1,23 +1,23 @@
 <script lang="ts">
   /// <reference types="@webflow/designer-extension-typings" />
   import { onMount, tick } from "svelte";
-  // Define Page type since it's not exported
-  type Page = {
+  // Define CustomPage type to avoid conflicts with an existing global Page type
+  type CustomPage = {
     id: string;
     type: string;
     getName(): Promise<string>;
-    setName(name: string): Promise<void>;
+    setName(name: string): Promise<null>;
     getSlug(): Promise<string>;
-    setSlug(slug: string): Promise<void>;
+    setSlug(slug: string): Promise<null>;
     getParent(): Promise<any>;
-    setParent(parent: any): Promise<void>;
-    setMetadata(metadata: any): Promise<void>;
+    setParent(parent: any): Promise<null>;
+    setMetadata(metadata: any): Promise<null>;
     getTitle(): Promise<string>;
-    setTitle(title: string): Promise<void>;
+    setTitle(title: string): Promise<null>;
     getDescription(): Promise<string>;
-    setDescription(description: string): Promise<void>;
+    setDescription(description: string): Promise<null>;
     isDraft(): Promise<boolean>;
-    setDraft(isDraft: boolean): Promise<void>;
+    setDraft(isDraft: boolean): Promise<null>;
     usesTitleAsOpenGraphTitle(): Promise<boolean>;
     // Since there are many more methods we might not know about,
     // we'll use a type assertion in our code instead of listing them all
@@ -101,6 +101,8 @@
     getName(): Promise<string>;
   };
 
+  let summaryMessage: string = "";
+
   $: filteredDuplicates = duplicates.filter((group) => {
     if (searchTerm) {
       const index = duplicates.indexOf(group);
@@ -148,16 +150,58 @@
     try {
       const styles = await webflow.getAllStyles();
 
-      stylesWithProperties = await Promise.all(
+      // Define the default HTML elements we want to exclude.
+      const excludedStyles = ["p", "ul", "ol", "li", "label"];
+
+      // Updated: assign to a temporary variable
+      const rawStylesWithProperties = await Promise.all(
         styles.map(async (style) => {
-          const name = await style.getName();
+          const rawName = await style.getName();
+          // Trim and normalize the style name (in case of extra spaces etc.)
+          const name = rawName.trim();
+          console.log("DEBUG: Found style name:", name);
+
+          // If the style name is one of the default HTML elements, skip it.
+          if (excludedStyles.includes(name.toLowerCase())) {
+            console.log("DEBUG: Excluding default style:", name);
+            return null;
+          }
+
           const bpProps = await getStylePropertiesForBreakpoints(style);
+          // Exclude styles that do not have any "main" properties (i.e. not set)
+          if (!bpProps["main"] || Object.keys(bpProps["main"]).length === 0) {
+            console.log(
+              "DEBUG: Excluding style with no main properties:",
+              name,
+            );
+            return null;
+          }
+
           return {
             name,
             properties: bpProps["main"], // Base (default) properties
             breakpointProperties: bpProps, // All breakpoints
           };
         }),
+      );
+
+      console.log(
+        "DEBUG: rawStylesWithProperties before filtering nulls:",
+        rawStylesWithProperties,
+      );
+
+      // Filter out any null values and cast the result to the expected type
+      stylesWithProperties = rawStylesWithProperties.filter(
+        (s) => s !== null,
+      ) as {
+        name: string;
+        properties: any;
+        breakpointProperties: any;
+      }[];
+
+      console.log(
+        "DEBUG: stylesWithProperties after filtering:",
+        stylesWithProperties,
       );
 
       const result = detectDuplicates(stylesWithProperties);
@@ -173,38 +217,22 @@
   const detectDuplicates = (
     styles: Array<{ name: string; properties: any; breakpointProperties: any }>,
   ) => {
-    const duplicates: string[][] = [];
-    const propertiesByGroup: string[] = [];
-    const processed = new Set<number>();
+    const groups: Record<string, string[]> = {};
 
-    for (let i = 0; i < styles.length; i++) {
-      const {
-        name: name1,
-        properties: properties1,
-        breakpointProperties: bpProps1,
-      } = styles[i];
-      if (processed.has(i) || Object.keys(properties1).length === 0) continue;
-      const duplicateGroup = [name1];
+    // Group style names by their base (default) properties
+    styles.forEach(({ name, properties }) => {
+      if (!properties || Object.keys(properties).length === 0) return;
+      const key = JSON.stringify(properties);
+      groups[key] = groups[key] ? [...groups[key], name] : [name];
+    });
 
-      for (let j = i + 1; j < styles.length; j++) {
-        if (processed.has(j)) continue;
-        const {
-          name: name2,
-          properties: properties2,
-          breakpointProperties: bpProps2,
-        } = styles[j];
-        if (JSON.stringify(properties1) === JSON.stringify(properties2)) {
-          duplicateGroup.push(name2);
-          processed.add(j);
-        }
-      }
-
-      if (duplicateGroup.length > 1) {
-        duplicates.push(duplicateGroup);
-        propertiesByGroup.push(JSON.stringify(properties1, null, 2));
-      }
-      processed.add(i);
-    }
+    // Only consider groups that have duplicates
+    const duplicates = Object.values(groups).filter(
+      (group) => group.length > 1,
+    );
+    const propertiesByGroup = Object.keys(groups)
+      .filter((key) => groups[key].length > 1)
+      .map((key) => JSON.stringify(JSON.parse(key), null, 2));
 
     return { duplicates, propertiesByGroup };
   };
@@ -301,6 +329,41 @@
     return typeof value === "object" && "value" in value;
   }
 
+  async function switchPageWithTimeout(
+    page: any,
+    timeout = 5000,
+  ): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`switchPage timed out after ${timeout}ms`));
+      }, timeout);
+      try {
+        await webflow.switchPage(page);
+        clearTimeout(timer);
+        resolve();
+      } catch (err) {
+        clearTimeout(timer);
+        reject(err);
+      }
+    });
+  }
+
+  async function getAllElementsWithTimeout(timeout = 5000): Promise<any[]> {
+    return new Promise(async (resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`getAllElements timed out after ${timeout}ms`));
+      }, timeout);
+      try {
+        const elements = await webflow.getAllElements();
+        clearTimeout(timer);
+        resolve(elements);
+      } catch (err) {
+        clearTimeout(timer);
+        reject(err);
+      }
+    });
+  }
+
   async function checkDesignerPermissions() {
     const capabilities = await webflow.canForAppMode([
       webflow.appModes.canModifyStyles,
@@ -349,22 +412,41 @@
           return style;
         }),
       );
+      // Insert targetStyleIDs for easier comparison
+      const targetStyleIDs = targetStyles.map((target) => target.id);
 
-      // 2. Create new style with properties from first style
+      // 2. Create new style with properties from first style, including breakpoint styles.
       if (!targetStyles[0]) {
         throw new Error("No source style found");
       }
 
-      let properties;
+      // Merge breakpoint properties from all selected styles
+      let mergedBpProperties: { [bp: string]: any } = {};
       try {
-        properties = await targetStyles[0].getProperties();
-        if (!properties) {
-          throw new Error("Could not get properties from source style");
+        for (const style of targetStyles) {
+          const bpProps = await getStylePropertiesForBreakpoints(style);
+          for (const [bp, props] of Object.entries(bpProps)) {
+            if (!mergedBpProperties[bp]) {
+              mergedBpProperties[bp] = { ...props };
+            } else {
+              mergedBpProperties[bp] = { ...mergedBpProperties[bp], ...props };
+            }
+          }
+        }
+        if (
+          !mergedBpProperties["main"] ||
+          Object.keys(mergedBpProperties["main"]).length === 0
+        ) {
+          throw new Error(
+            "Merged breakpoint properties missing 'main' properties",
+          );
         }
       } catch (err: unknown) {
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error occurred";
-        throw new Error(`Failed to get properties from style: ${errorMessage}`);
+        throw new Error(
+          `Failed to merge breakpoint properties: ${errorMessage}`,
+        );
       }
 
       const newStyle = await webflow.createStyle(newStyleName);
@@ -373,9 +455,20 @@
       }
 
       try {
-        await newStyle.setProperties(properties);
-        console.log(`Created new style: ${newStyleName} (ID: ${newStyle.id})`);
-        logs = [...logs, `Created new style "${newStyleName}"`];
+        // For each breakpoint (including "main"), set properties on the new style using merged properties.
+        for (const [bp, props] of Object.entries(mergedBpProperties)) {
+          await newStyle.setProperties(props, {
+            breakpoint: bp as any,
+            pseudo: "noPseudo",
+          });
+        }
+        console.log(
+          `Created new style: ${newStyleName} (ID: ${newStyle.id}) with all breakpoint properties`,
+        );
+        logs = [
+          ...logs,
+          `Created new style "${newStyleName}" with all breakpoint properties`,
+        ];
       } catch (err: unknown) {
         // Try to clean up the failed style
         try {
@@ -391,22 +484,41 @@
       // 3. Get all pages - UPDATED to properly filter pages
       const pagesAndFolders = await webflow.getAllPagesAndFolders();
       const pages = pagesAndFolders.filter(
-        (item: WebflowItem): item is Page =>
+        (item: WebflowItem): item is CustomPage =>
           item &&
           typeof item === "object" &&
           "type" in item &&
           item.type === "Page" &&
           "getName" in item &&
-          typeof item.getName === "function",
+          typeof item.getName === "function" &&
+          "getSlug" in item && // <-- Added check for getSlug
+          typeof item.getSlug === "function", // <-- Ensure getSlug is a function
       );
 
-      console.log(`\n📄 Found ${pages.length} pages to scan`);
-      totalCount = pages.length;
+      console.log(`\n📄 Found ${pages.length} pages before filtering`);
+
+      // Exclude pages with slug "/401" and "/paypal-checkout"
+      const pagesToScan: CustomPage[] = [];
+      for (const page of pages) {
+        try {
+          const slug = await page.getSlug();
+          if (slug === "/401" || slug === "/paypal-checkout") {
+            console.log(`Skipping page with slug ${slug}`);
+            continue;
+          }
+        } catch (err) {
+          console.warn(`Failed to get slug for page ${page.id}:`, err);
+        }
+        pagesToScan.push(page as CustomPage);
+      }
+
+      console.log(`\n📄 After filtering, ${pagesToScan.length} pages to scan`);
+      totalCount = pagesToScan.length;
       processedCount = 0;
-      logs = [...logs, `Scanning ${pages.length} pages...`];
+      logs = [...logs, `Scanning ${pagesToScan.length} pages...`];
 
       // 4. Check each page for elements using our styles
-      for (const page of pages) {
+      for (const page of pagesToScan) {
         if (shouldStop) break;
 
         processedCount++;
@@ -422,111 +534,74 @@
         logs = [...logs, `Checking ${pageName}...`];
 
         try {
-          await webflow.switchPage(page as any);
-          const elements = await webflow.getAllElements();
+          await switchPageWithTimeout(page as any);
+          const elements = await getAllElementsWithTimeout(5000);
           console.log(`Found ${elements.length} total elements`);
 
-          // Group elements by CMS collection.
-          // For elements with a collectionId, only keep the first encountered as representative.
-          const collectionRepresentatives = new Map<string, any>();
-          const standaloneElements = [];
-
-          for (const element of elements) {
-            if (!element?.styles) continue;
-
-            const collectionId = await getCollectionTemplateId(element);
-            if (collectionId) {
-              if (!collectionRepresentatives.has(collectionId)) {
-                collectionRepresentatives.set(collectionId, element);
-              }
-            } else {
-              standaloneElements.push(element);
-            }
-          }
+          // Process all elements individually, regardless of collection grouping.
+          const elementsWithStyles = elements.filter(
+            (element) => element?.styles,
+          );
 
           let pageUpdatedCount = 0;
 
-          // Process each CMS collection representative concurrently.
           await Promise.all(
-            Array.from(collectionRepresentatives.entries()).map(
-              async ([collectionId, repElement]) => {
-                try {
-                  const elementStyles = await repElement.getStyles();
-                  if (!Array.isArray(elementStyles)) return;
-
-                  console.log(
-                    `\nChecking collection representative:`,
-                    `\n  ID: ${repElement.id}`,
-                    `\n  Type: ${repElement.type}`,
-                    `\n  Collection: ${collectionId}`,
-                    `\n  Styles: ${elementStyles.length}`,
-                  );
-
-                  const hasTargetStyle = elementStyles.some(
-                    (style) =>
-                      style &&
-                      targetStyles.some((target) => target?.id === style?.id),
-                  );
-
-                  if (hasTargetStyle) {
-                    const updatedStyles = elementStyles.map((style) =>
-                      style &&
-                      targetStyles.some((target) => target?.id === style?.id)
-                        ? newStyle
-                        : style,
-                    );
-
-                    await repElement.setStyles(
-                      updatedStyles.filter((s): s is Style => s !== null),
-                    );
-                    pageUpdatedCount++;
-                    logs = [
-                      ...logs,
-                      `Updated collection template ${collectionId}`,
-                    ];
-                  }
-                } catch (err) {
-                  console.warn(
-                    `Error processing collection representative ${collectionId}:`,
-                    err,
-                  );
-                }
-              },
-            ),
-          );
-
-          // Process standalone elements concurrently.
-          await Promise.all(
-            standaloneElements.map(async (element) => {
+            elementsWithStyles.map(async (element) => {
               try {
                 const elementStyles = await element.getStyles();
                 if (!Array.isArray(elementStyles)) return;
 
-                const hasTargetStyle = elementStyles.some(
-                  (style) =>
-                    style &&
-                    targetStyles.some((target) => target?.id === style?.id),
+                // Debug: log style IDs before update
+                console.log(
+                  `Before update, element ${element.id} styles:`,
+                  elementStyles.map((s: any) => (s ? s.id : "null")),
                 );
 
+                // Check if the element has any style we want to replace
+                const hasTargetStyle = elementStyles.some(
+                  (style) => style && targetStyleIDs.includes(style.id),
+                );
                 if (hasTargetStyle) {
-                  const updatedStyles = elementStyles.map((style) =>
-                    style &&
-                    targetStyles.some((target) => target?.id === style?.id)
+                  // Build a new styles array, replacing target styles with the new style while preserving order
+                  const updatedStyles = elementStyles.map((style) => {
+                    return style && targetStyleIDs.includes(style.id)
                       ? newStyle
-                      : style,
+                      : style;
+                  });
+
+                  // Debug: log style IDs after creating updatedStyles
+                  console.log(
+                    `After replacement logic, element ${element.id} updated styles:`,
+                    updatedStyles.map((s: any) => (s ? s.id : "null")),
                   );
 
-                  await element.setStyles(
-                    updatedStyles.filter((s): s is Style => s !== null),
+                  await element.setStyles(updatedStyles);
+
+                  // Wait 100ms to allow the change to propagate
+                  await new Promise((resolve) => setTimeout(resolve, 100));
+
+                  // Post-update debugging: re-read styles from the element
+                  const postUpdateStyles = await element.getStyles();
+                  console.log(
+                    `Post update, element ${element.id} styles:`,
+                    postUpdateStyles.map((s: any) => (s ? s.id : "null")),
                   );
+
+                  if (
+                    postUpdateStyles.some(
+                      (s: any) => s && targetStyleIDs.includes(s.id),
+                    )
+                  ) {
+                    console.warn(
+                      `Warning: target style still present on element ${element.id}`,
+                    );
+                  }
+
                   pageUpdatedCount++;
-                  logs = [...logs, `Updated standalone element ${element.id}`];
+                  logs = [...logs, `Updated element ${element.id}`];
                 }
               } catch (err) {
-                console.warn(
-                  `Error processing standalone element ${element.id}:`,
-                  err,
-                );
+                console.warn(`Error processing element ${element?.id}:`, err);
               }
             }),
           );
@@ -557,6 +632,7 @@
       }
 
       logs = [...logs, `Completed! Updated ${totalElementsUpdated} elements`];
+      summaryMessage = `Successfully merged style "${newStyleName}". Updated ${totalElementsUpdated} element${totalElementsUpdated === 1 ? "" : "s"}.`;
 
       webflow.notify({
         type: "Success",
@@ -568,14 +644,13 @@
       newStyleName = "";
     } catch (error) {
       console.error("Style operation failed:", error);
-      logs = [
-        ...logs,
-        `Error: ${error instanceof Error ? error.message : "Failed to update style"}`,
-      ];
+      const errMsg =
+        error instanceof Error ? error.message : "Failed to update style";
+      logs = [...logs, `Error: ${errMsg}`];
+      summaryMessage = `Failed to merge style "${newStyleName}". ${errMsg}`;
       webflow.notify({
         type: "Error",
-        message:
-          error instanceof Error ? error.message : "Failed to update style",
+        message: errMsg,
       });
     } finally {
       isProcessing = false;
@@ -592,7 +667,7 @@
   }
 
   // Helper function to get template type from page
-  async function getPageTemplateType(page: Page) {
+  async function getPageTemplateType(page: CustomPage) {
     try {
       const pageType = await (page as any).getType();
       if (pageType === "CollectionPage") {
@@ -766,21 +841,41 @@
       // 2. Get all pages that need to be checked - UPDATED
       const pagesAndFolders = await webflow.getAllPagesAndFolders();
       const pages = pagesAndFolders.filter(
-        (item: WebflowItem): item is Page =>
+        (item: WebflowItem): item is CustomPage =>
           item &&
           typeof item === "object" &&
           "type" in item &&
           item.type === "Page" &&
           "getName" in item &&
-          typeof item.getName === "function",
+          typeof item.getName === "function" &&
+          "getSlug" in item && // <-- Added check for getSlug
+          typeof item.getSlug === "function", // <-- Ensure getSlug is a function
       );
 
-      totalCount = pages.length;
+      // Exclude pages with slug "/401" and "/paypal-checkout"
+      const pagesToScan: CustomPage[] = [];
+      for (const page of pages) {
+        try {
+          const slug = await page.getSlug();
+          if (slug === "/401" || slug === "/paypal-checkout") {
+            console.log(`Skipping page with slug ${slug}`);
+            continue;
+          }
+        } catch (err) {
+          console.warn(`Failed to get slug for page ${page.id}:`, err);
+        }
+        pagesToScan.push(page as CustomPage);
+      }
+
+      totalCount = pagesToScan.length;
       processedCount = 0;
-      logs = [...logs, `🔍 Scanning ${pages.length} pages for style usage`];
+      logs = [
+        ...logs,
+        `🔍 Scanning ${pagesToScan.length} pages for style usage`,
+      ];
 
       // 3. For each page, get elements and check only those with styles
-      for (const page of pages) {
+      for (const page of pagesToScan) {
         processedCount++;
         let pageName;
         try {
@@ -1087,14 +1182,24 @@
     const differences: { [bp: string]: any } = {};
     for (const bp in styleData.breakpointProperties) {
       if (bp === "main") continue;
-      if (
-        JSON.stringify(styleData.breakpointProperties[bp]) !==
-        JSON.stringify(base)
-      ) {
-        differences[bp] = styleData.breakpointProperties[bp];
+      const bpProps = styleData.breakpointProperties[bp];
+      // If no breakpoint properties are defined (empty), skip the comparison.
+      if (!bpProps || Object.keys(bpProps).length === 0) {
+        continue;
+      }
+      if (JSON.stringify(bpProps) !== JSON.stringify(base)) {
+        differences[bp] = bpProps;
       }
     }
     return { differences };
+  }
+
+  // Add new helper function that returns true if all styles in a group have no breakpoint differences.
+  function isPerfectMatch(group: string[]): boolean {
+    return group.every((name) => {
+      const { differences } = getDiffForStyle(name);
+      return Object.keys(differences).length === 0;
+    });
   }
 
   // Helper function to check if an object is empty
@@ -1181,6 +1286,10 @@
     </div>
   {/if}
 
+  {#if summaryMessage}
+    <div class="summary-message">{summaryMessage}</div>
+  {/if}
+
   {#if loading}
     <div class="loading">Loading...</div>
   {:else}
@@ -1204,7 +1313,12 @@
               newStyleName = "";
             }}
           >
-            Duplicates group ({index + 1}) - {group.length} items
+            <span>
+              {`Duplicates group (${index + 1}) - ${group.length} items`}
+            </span>
+            {#if isPerfectMatch(group)}
+              <span class="perfect-match-tag">Perfect Match</span>
+            {/if}
           </button>
         {/each}
       </div>
@@ -1229,7 +1343,17 @@
                           : selectedDuplicates.filter((n) => n !== name);
                       }}
                     />
-                    <span class="style-token">{name}</span>
+                    <span class="style-token">
+                      {name}
+                      {#if /^(h[1-6]|blockquote|p)$/i.test(name)}
+                        <span
+                          class="rich-text-tooltip"
+                          title="This style may be part of a rich text element"
+                        >
+                          (RT)
+                        </span>
+                      {/if}
+                    </span>
                   </label>
                   <div class="button-group">
                     <button
@@ -1371,6 +1495,9 @@
     cursor: pointer;
     background: transparent;
     border: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   .group-selector.active {
     background: #333;
@@ -1577,5 +1704,37 @@
   }
   .inline-diff ul {
     margin-top: 0.5rem;
+  }
+
+  /* Override defaults for common HTML elements */
+  :global(li, p, label, ul, ol) {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    /* Optionally add any other reset styles as needed */
+  }
+
+  /* New style for the Perfect Match tag */
+  .perfect-match-tag {
+    background-color: #4caf50;
+    color: white;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    margin-left: 8px;
+  }
+
+  /* New style for the rich text tooltip */
+  .rich-text-tooltip {
+    margin-left: 4px;
+    font-size: 0.75em;
+    cursor: help;
+    border-bottom: 1px dotted #ccc;
+  }
+
+  .summary-message {
+    margin: 10px 16px;
+    font-size: 1em;
+    color: #4caf50; /* Green color for success messages */
   }
 </style>
